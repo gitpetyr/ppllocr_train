@@ -5,10 +5,10 @@ from ultralytics import YOLO
 
 # ================= 配置区域 =================
 # 1. 模型路径 (请修改为您训练好的 best.pt 路径)
-MODEL_PATH = "runs/detect/yolo11m_universal_final/weights/last.pt" 
+MODEL_PATH = "models/v1/weights/last.pt" 
 
 # 2. 测试图片路径 (可以是单张图片，也可以是文件夹)
-SOURCE_PATH = "" 
+SOURCE_PATH = "captcha.jpg" 
 
 # 3. 字符集 (必须与 data_gen_unified.py 中的完全一致！)
 CHARACTERS = string.digits + string.ascii_letters + string.punctuation
