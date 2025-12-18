@@ -1,8 +1,8 @@
 from ultralytics import YOLO
 import os
 
-MODEL_PATH = "models/v1/weights/last.pt" 
-EXPORT_PATH = "models/onnx/ppllocr_v1.onnx"
+MODEL_PATH = "models/beta_v2/yolo11m_universal_final/weights/best.pt" 
+EXPORT_PATH = "models/onnx/ppllocr_betav2.onnx"
 
 def export_model():
     if not os.path.exists(MODEL_PATH):
@@ -17,6 +17,7 @@ def export_model():
     success = model.export(
         format="onnx", 
         dynamic=True, 
+        simplify=True,
         imgsz=512,      # 依然建议锁定训练尺寸，防止特征不对齐
         opset=12        # 保持兼容性
     )

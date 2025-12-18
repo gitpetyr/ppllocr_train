@@ -7,9 +7,9 @@ import os
 import random
 
 # ================= 配置 =================
-SPECIFIC_SYMBOLS = "/*%@#"
+SPECIFIC_SYMBOLS = "/*%@#+-()"
 CHARACTERS = string.digits + string.ascii_letters + SPECIFIC_SYMBOLS
-ONNX_MODEL_PATH = "models/onnx/ppllocr_v1.onnx" 
+ONNX_MODEL_PATH = "models/onnx/ppllocr_betav2.onnx" 
 # =======================================
 
 class PureONNXPredictor:
@@ -188,13 +188,13 @@ if __name__ == "__main__":
     predictor = PureONNXPredictor(ONNX_MODEL_PATH)
     
     # 找个测试图
-    test_img_path = "屏幕截图 2025-12-08 221112.png" # 请确保文件存在
+    test_img_path = "download.png" # 请确保文件存在
     
     print(f"\n🎯 测试图片: {test_img_path}")
 
     # === 测试 1: 传入路径 ===
     print("--- Mode 1: Path ---")
-    text, _ = predictor.predict(test_img_path)
+    text, _ = predictor.predict(test_img_path,conf=0.6)
     print(f"Result: {text}")
 
     # === 测试 2: 传入 Bytes (模拟网络请求) ===

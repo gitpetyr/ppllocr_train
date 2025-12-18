@@ -5,10 +5,10 @@ from ultralytics import YOLO
 
 # ================= 配置区域 =================
 # 1. 模型路径 (请修改为您训练好的 best.pt 路径)
-MODEL_PATH = "models/v1/weights/last.pt" 
+MODEL_PATH = "runs/detect/yolo11m_universal_final/weights/best.pt" 
 
 # 2. 测试图片路径 (可以是单张图片，也可以是文件夹)
-SOURCE_PATH = "captcha.jpg" 
+SOURCE_PATH = "download.png" 
 
 # 3. 字符集 (必须与 data_gen_unified.py 中的完全一致！)
 CHARACTERS = string.digits + string.ascii_letters + string.punctuation
@@ -57,8 +57,8 @@ def main():
     # conf=0.25: 置信度阈值
     # iou=0.45: NMS 阈值，防止重叠框
     print(f"Predicting {SOURCE_PATH}...")
-    results = model.predict(source=SOURCE_PATH, save=True, conf=0.55, iou=0.5)
-
+    results = model.predict(source=SOURCE_PATH, save=True, conf=0.5, iou=0.5)
+    print(results[0].names)
     # 3. 解析结果
     predicted_text = get_sorted_text(results)
     

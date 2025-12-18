@@ -18,10 +18,10 @@ OUTPUT_DIR = "dataset_universal_final"
 
 # 尺寸配置
 CAPTCHA_W_RANGE = (90, 360)
-CAPTCHA_H_RANGE = (35, 120)
+CAPTCHA_H_RANGE = (30, 120)
 
 # 字符集 (保持不变)
-SPECIFIC_SYMBOLS = "/*%@#"
+SPECIFIC_SYMBOLS = "/*%@#+-()"
 CHARACTERS = string.digits + string.ascii_letters + SPECIFIC_SYMBOLS
 CHAR_MAP = {char: i for i, char in enumerate(CHARACTERS)}
 CLASS_COUNT = len(CHARACTERS)
