@@ -1,18 +1,30 @@
-import cv2
 import string
-import torch
+import os
 from ultralytics import YOLO
 
 # ================= 配置区域 =================
 # 1. 模型路径 (请修改为您训练好的 best.pt 路径)
-MODEL_PATH = "runs/detect/yolo11m_universal_final/weights/best.pt" 
+# 默认指向仓库内自带的 v2_beta1218 权重；如果你用 train.py 训练，则通常在 runs/ 下。
+MODEL_PATH = "models/v2_beta1218/yolo11m_universal_final/weights/best.pt"
 
 # 2. 测试图片路径 (可以是单张图片，也可以是文件夹)
 SOURCE_PATH = "download.png" 
 
-# 3. 字符集 (必须与 data_gen_unified.py 中的完全一致！)
-CHARACTERS = string.digits + string.ascii_letters + string.punctuation
+# 3. 字符集 (必须与 datagen.py 中的完全一致！)
+SPECIFIC_SYMBOLS = "/*%@#+-()"
+CHARACTERS = string.digits + string.ascii_letters + SPECIFIC_SYMBOLS
 # ===========================================
+
+def _get_char(cls_id: int, names):
+    if isinstance(names, dict):
+        name = names.get(cls_id)
+        if isinstance(name, str) and name:
+            return name
+
+    if 0 <= cls_id < len(CHARACTERS):
+        return CHARACTERS[cls_id]
+
+    return ""
 
 def get_sorted_text(results):
     """
@@ -34,10 +46,7 @@ def get_sorted_text(results):
         decoded_chars = []
         for box in sorted_boxes:
             cls_id = int(box[5])
-            conf = box[4]
-            if cls_id < len(CHARACTERS):
-                char = CHARACTERS[cls_id]
-                decoded_chars.append(char)
+            decoded_chars.append(_get_char(cls_id, getattr(r, "names", None)))
         
         text_results.append("".join(decoded_chars))
         
@@ -46,6 +55,12 @@ def get_sorted_text(results):
 def main():
     # 1. 加载模型
     print(f"Loading model from {MODEL_PATH}...")
+    if not os.path.exists(MODEL_PATH):
+        print(f"❌ 模型文件不存在: {MODEL_PATH}")
+        print("   你可以改为：")
+        print("   - models/v1/weights/best.pt")
+        print("   - runs/detect/yolo11m_universal_final/weights/best.pt")
+        return
     try:
         model = YOLO(MODEL_PATH)
     except Exception as e:
