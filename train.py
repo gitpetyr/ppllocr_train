@@ -15,22 +15,32 @@ def main():
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
     print(f"🚀 正在使用计算设备: {torch.cuda.get_device_name(0) if device == 'cuda' else 'CPU'}")
     # device="cpu"
-    # 数据集配置文件路径 (对应您的 data_gen_unified.py 生成的目录)
+    # 数据集配置文件路径 (对应 datagen.py 生成的目录)
     DATA_CONFIG = os.path.join('dataset_universal_final', 'data.yaml')
 
     # 安全检查
     if not os.path.exists(DATA_CONFIG):
         print(f"❌ 错误：未找到配置文件 '{DATA_CONFIG}'")
-        print("   请先运行 'data_gen_unified.py' 生成数据集！")
+        print("   请先运行 'datagen.py' 生成数据集！")
         return
 
     # -------------------------------------------------------------------------
     # 2. 模型初始化
     # -------------------------------------------------------------------------
+    RUN_NAME = 'yolo11m_universal_final'
+    RESUME_WEIGHTS = os.path.join('runs', 'detect', RUN_NAME, 'weights', 'last.pt')
+    BASE_WEIGHTS = 'yolo11m.pt'
+
     # 使用 YOLOv11 Medium 版本
-    # m 版比 s 版多一倍参数，对 94 类字符和复杂背景的特征提取能力更强
-    print("📦 加载模型: yolo11m.pt ...")
-    model = YOLO('runs/detect/yolo11m_universal_final/weights/last.pt') 
+    # m 版比 s 版多一倍参数，对复杂背景的特征提取能力更强
+    resume = False
+    if os.path.exists(RESUME_WEIGHTS):
+        print(f"📦 续训加载模型: {RESUME_WEIGHTS}")
+        model = YOLO(RESUME_WEIGHTS)
+        resume = True
+    else:
+        print(f"📦 从头开始加载模型: {BASE_WEIGHTS}")
+        model = YOLO(BASE_WEIGHTS)
 
     # -------------------------------------------------------------------------
     # 3. 开始训练 (核心配置)
@@ -45,7 +55,7 @@ def main():
         imgsz=512,           # 统一画布尺寸 512x512
         batch=16,            # [显存警告] m模型+512图比较吃显存。如果报错 OOM，请改为 8 或 4
         device=device,
-        name='yolo11m_universal_final', # 训练结果保存目录名
+        name=RUN_NAME, # 训练结果保存目录名
         workers=16,           # 数据加载线程数 (Windows下如果卡住不动，请改为 0)
         amp=True,
         # --- 损失函数权重 (根据您的需求特别调整) ---
@@ -80,7 +90,7 @@ def main():
         optimizer='auto',    # v11 会自动选择 SGD 或 AdamW
         cos_lr=True,         # 使用余弦退火学习率，后期收敛更稳
         patience=20,         # 如果 20 轮没提升则提前停止
-        resume=True
+        resume=resume
     )
     
     print(f"\n✅ 训练全部完成！")
