@@ -1,11 +1,12 @@
 # train.py
 import os
-import torch
-from ultralytics import YOLO
 
 # --- 强制 MIOpen 使用立即模式，跳过耗时的搜索 ---
-os.environ['MIOPEN_FIND_MODE'] = '1' 
-os.environ['MIOPEN_USER_DB_PATH'] = '' # 禁用用户数据库以防损坏
+os.environ['MIOPEN_FIND_MODE'] = '1'
+os.environ['MIOPEN_USER_DB_PATH'] = ''  # 禁用用户数据库以防损坏
+
+import torch
+from ultralytics import YOLO
 
 def main():
     # -------------------------------------------------------------------------

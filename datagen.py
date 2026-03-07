@@ -118,16 +118,25 @@ def cv2_fisheye(img_pil, mode="barrel"):
     distorted = cv2.undistort(img, K, D, None, new_K)
     return Image.fromarray(distorted)
 
-def cv2_perspective(img_pil):
+def cv2_perspective(img_pil, dst_pts=None):
     img = np.array(img_pil)
     h, w = img.shape[:2]
     src_pts = np.float32([[0, 0], [w, 0], [0, h], [w, h]])
-    # [削弱] 透视拉伸幅度减小
-    def rand_off(): return random.randint(int(min(w,h)*0.02), int(min(w,h)*0.10))
-    dst_pts = np.float32([[rand_off(), rand_off()], [w - rand_off(), rand_off()], [rand_off(), h - rand_off()], [w - rand_off(), h - rand_off()]])
+    if dst_pts is None:
+        # [削弱] 透视拉伸幅度减小
+        def rand_off():
+            return random.randint(int(min(w, h) * 0.02), int(min(w, h) * 0.10))
+
+        dst_pts = np.float32([
+            [rand_off(), rand_off()],
+            [w - rand_off(), rand_off()],
+            [rand_off(), h - rand_off()],
+            [w - rand_off(), h - rand_off()]
+        ])
+
     M = cv2.getPerspectiveTransform(src_pts, dst_pts)
     distorted = cv2.warpPerspective(img, M, (w, h), borderMode=cv2.BORDER_CONSTANT, borderValue=(0,0,0,0))
-    return Image.fromarray(distorted)
+    return Image.fromarray(distorted), dst_pts
 
 def apply_chromatic_aberration(image, offset=3):
     r, g, b = image.split()
@@ -203,8 +212,12 @@ def draw_random_chaos_curve(draw, p1, p2, fill, width):
         draw.line(final_path_points, fill=fill, width=width, joint='curve')
 
 
-def draw_targeted_interference(draw, w, h, labels, style="curve"):
-    if not labels: return
+def draw_targeted_interference(image, w, h, labels, style="curve"):
+    if not labels:
+        return image
+
+    overlay = Image.new('RGBA', (w, h), (0, 0, 0, 0))
+    draw = ImageDraw.Draw(overlay)
 
     # [削弱] 动态线宽变细 (3% - 5%)
     base_width = max(1, int(h * 0.03)) 
@@ -235,15 +248,18 @@ def draw_targeted_interference(draw, w, h, labels, style="curve"):
             p1 = (corner_x + random.randint(-15, 15), corner_y + random.randint(-15, 15))
             p2 = (bx1 + (bx2-bx1)/2, by1 + (by2-by1)/2)
             draw_random_chaos_curve(draw, p1, p2, color, width)
-            
+
         else:
-            if random.random() < 0.5: 
+            if random.random() < 0.5:
                 y_level = random.choice([random.randint(0, int(h*0.2)), random.randint(int(h*0.8), h)])
                 p1 = (0, y_level); p2 = (w, y_level + random.randint(-10, 10))
-            else: 
+            else:
                 x_level = random.choice([random.randint(0, int(w*0.3)), random.randint(int(w*0.7), w)])
                 p1 = (x_level, 0); p2 = (x_level + random.randint(-10, 10), h)
             draw_random_chaos_curve(draw, p1, p2, color, width)
+
+    image.paste(overlay, (0, 0), overlay)
+    return image
 
 def draw_grid_mask(image, w, h, strength="hard"):
     grid_layer = Image.new('RGBA', (w, h), (0,0,0,0))
@@ -385,9 +401,10 @@ def generate_captcha_pro(difficulty="normal"):
         return Image.fromarray(cv2.remap(np.array(pil_img), mx, my, interpolation=cv2.INTER_LINEAR, borderMode=cv2.BORDER_CONSTANT, borderValue=(0,0,0,0)))
 
     final_text_layer = remap_image(merged_text_layer, map_x, map_y)
-    # [削弱] 减少透视出现的概率
-    if style == "geometric_chaos" and map_x is None and random.random() < 0.5: 
-        final_text_layer = cv2_perspective(final_text_layer)
+    apply_perspective = style == "geometric_chaos" and random.random() < 0.5
+    perspective_dst_pts = None
+    if apply_perspective:
+        final_text_layer, perspective_dst_pts = cv2_perspective(final_text_layer)
 
     final_labels = []
     paste_x = (w - temp_w) // 2
@@ -395,8 +412,8 @@ def generate_captcha_pro(difficulty="normal"):
     
     for cb in char_boxes:
         dist_char_layer = remap_image(cb['layer'], map_x, map_y)
-        if style == "geometric_chaos" and map_x is None and random.random() < 0.5: 
-            dist_char_layer = cv2_perspective(dist_char_layer)
+        if apply_perspective:
+            dist_char_layer, _ = cv2_perspective(dist_char_layer, dst_pts=perspective_dst_pts)
         bbox = dist_char_layer.getbbox()
         if bbox:
             real_x1 = max(0, bbox[0] + paste_x); real_y1 = max(0, bbox[1] + paste_y)
@@ -405,12 +422,11 @@ def generate_captcha_pro(difficulty="normal"):
                 final_labels.append((cb['id'], real_x1, real_y1, real_x2, real_y2))
 
     image.paste(final_text_layer, (paste_x, paste_y), final_text_layer)
-    d_final = ImageDraw.Draw(image)
-    
     if style == "classic" or difficulty == "hard":
-        draw_targeted_interference(d_final, w, h, final_labels)
+        image = draw_targeted_interference(image, w, h, final_labels)
 
     if difficulty == "hard":
+        d_final = ImageDraw.Draw(image)
         draw_camouflage(d_final, w, h, text_fill, count=random.randint(2, 5))
         
     if style == "grid_fisheye": image = draw_grid_mask(image, w, h, strength="hard")
