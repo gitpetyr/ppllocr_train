@@ -26,31 +26,26 @@ def _get_char(cls_id: int, names):
 
     return ""
 
-def get_sorted_text(results):
+def get_sorted_text(result):
     """
     OCR 核心逻辑：将检测到的框按从左到右排序，还原字符串
     """
-    text_results = []
-    
-    for r in results:
-        boxes = r.boxes.data.cpu().numpy() # [x1, y1, x2, y2, conf, cls]
-        
-        if len(boxes) == 0:
-            return ""
+    boxes = result.boxes.data.cpu().numpy() # [x1, y1, x2, y2, conf, cls]
 
-        # 1. 提取 (x1, class_id)
-        # 这里做简单的单行排序。如果是多行文本，需要先按 Y 轴聚类，再按 X 轴排序。
-        # 对于验证码/单行文本，直接按 x1 (索引0) 排序即可。
-        sorted_boxes = sorted(boxes, key=lambda x: x[0]) 
+    if len(boxes) == 0:
+        return ""
 
-        decoded_chars = []
-        for box in sorted_boxes:
-            cls_id = int(box[5])
-            decoded_chars.append(_get_char(cls_id, getattr(r, "names", None)))
-        
-        text_results.append("".join(decoded_chars))
-        
-    return text_results[0] if text_results else ""
+    # 1. 提取 (x1, class_id)
+    # 这里做简单的单行排序。如果是多行文本，需要先按 Y 轴聚类，再按 X 轴排序。
+    # 对于验证码/单行文本，直接按 x1 (索引0) 排序即可。
+    sorted_boxes = sorted(boxes, key=lambda x: x[0])
+
+    decoded_chars = []
+    for box in sorted_boxes:
+        cls_id = int(box[5])
+        decoded_chars.append(_get_char(cls_id, getattr(result, "names", None)))
+
+    return "".join(decoded_chars)
 
 def main():
     # 1. 加载模型
@@ -73,12 +68,17 @@ def main():
     # iou=0.45: NMS 阈值，防止重叠框
     print(f"Predicting {SOURCE_PATH}...")
     results = model.predict(source=SOURCE_PATH, save=True, conf=0.5, iou=0.5)
-    print(results[0].names)
+
+    if not results:
+        print("❌ 未返回任何预测结果")
+        return
+
     # 3. 解析结果
-    predicted_text = get_sorted_text(results)
-    
     print("-" * 30)
-    print(f"OCR 识别结果: {predicted_text}")
+    for result in results:
+        predicted_text = get_sorted_text(result)
+        source_path = getattr(result, "path", SOURCE_PATH)
+        print(f"{source_path}: {predicted_text}")
     print("-" * 30)
     print(f"结果图片已保存到: {results[0].save_dir}")
 
